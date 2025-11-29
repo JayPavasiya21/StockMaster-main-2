@@ -805,6 +805,39 @@ class PickWaveViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(pick_wave)
         return Response({'success': True, 'pick_wave': serializer.data})
 
+    @action(detail=True, methods=['get'])
+    def pick_list(self, request, pk=None):
+        """Return aggregated pick list grouped by product and bin for this wave.
+
+        The response contains rows with product and bin information along with
+        total quantity to pick and the number of orders that include the item.
+        """
+        pick_wave = self.get_object()
+
+        # Build aggregation from delivery order items
+        rows = {}
+        for order in pick_wave.delivery_orders.all().prefetch_related('items__product', 'items__bin'):
+            for item in order.items.all():
+                key = f"{item.product_id}|{item.bin_id or 'none'}"
+                bin_code = item.bin.code if item.bin else '-'
+                quantity = item.stock_quantity()
+
+                if key not in rows:
+                    rows[key] = {
+                        'product_id': item.product_id,
+                        'product_name': item.product.name,
+                        'product_sku': item.product.sku,
+                        'bin_code': bin_code,
+                        'total_quantity': 0,
+                        'order_count': 0,
+                    }
+                rows[key]['total_quantity'] += float(quantity)
+                rows[key]['order_count'] += 1
+
+        # Sort by bin then SKU for efficient floor picking
+        sorted_rows = sorted(rows.values(), key=lambda r: (r['bin_code'] or '', r['product_sku'] or ''))
+        return Response({'results': sorted_rows})
+
 
 class ApprovalViewSet(viewsets.ModelViewSet):
     """Generic approval management"""
