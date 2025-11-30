@@ -55,6 +55,14 @@ select {
   background-color: #0f172a !important;
 }
 
+[data-theme='dark'] .hover\:bg-gray-50:hover {
+  background-color: rgb(12 74 110 / 0.4) !important;
+}
+
+.hover\:bg-gray-50:hover {
+  background-color: rgb(224 242 254 / var(--tw-bg-opacity, 1)) !important;
+}
+
 [data-theme='dark'] .border-gray-200,
 [data-theme='dark'] .border-gray-100 {
   border-color: var(--card-border) !important;
@@ -65,4 +73,3 @@ select {
     text-wrap: balance;
   }
 }
-
