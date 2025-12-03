@@ -91,8 +91,8 @@ export default function Layout({ children }: LayoutProps) {
                     href={item.href}
                     className={`group flex items-center gap-3 p-3 rounded-lg transition-all duration-200 ${
                       isActive
-                        ? 'bg-primary-100 text-primary-700 shadow-sm dark:bg-primary-900/40 dark:text-primary-200'
-                        : 'text-gray-700 hover:bg-gray-100 hover:text-primary-600 hover:shadow-sm dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-primary-300'
+                        ? 'bg-primary-100 text-primary-700 shadow-sm ring-1 ring-primary-200 dark:bg-primary-900/40 dark:text-primary-200 dark:ring-primary-700'
+                        : 'text-gray-700 hover:bg-primary-50 hover:text-primary-700 hover:shadow-sm dark:text-gray-300 dark:hover:bg-primary-900/40 dark:hover:text-primary-200'
                     }`}
                   >
                     <IconComponent
@@ -136,4 +136,3 @@ export default function Layout({ children }: LayoutProps) {
     </div>
   );
 }
-

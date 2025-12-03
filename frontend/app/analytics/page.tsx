@@ -8,11 +8,27 @@ import {
   ReplenishmentSuggestion,
   ServiceLevelMetrics,
   AbcXyzMatrix,
+  ABCAnalysis,
 } from '@/lib/analytics';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell } from 'recharts';
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+  Cell,
+  Line,
+  ComposedChart,
+} from 'recharts';
 import { TrendingUp, Package, DollarSign, AlertTriangle, Clock, Activity } from 'lucide-react';
 
-const COLORS = ['#3B82F6', '#10B981', '#F59E0B'];
+// Green for strong contribution, amber for medium, red for low – used across charts and tiles.
+const COLORS = ['#16a34a', '#f97316', '#dc2626'];
 
 export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<AnalyticsDashboard | null>(null);
@@ -20,6 +36,7 @@ export default function AnalyticsPage() {
   const [replenishment, setReplenishment] = useState<ReplenishmentSuggestion[]>([]);
   const [serviceLevels, setServiceLevels] = useState<ServiceLevelMetrics | null>(null);
   const [abcXyz, setAbcXyz] = useState<AbcXyzMatrix | null>(null);
+  const [abcDetail, setAbcDetail] = useState<ABCAnalysis | null>(null);
 
   useEffect(() => {
     loadAnalytics();
@@ -28,16 +45,18 @@ export default function AnalyticsPage() {
   const loadAnalytics = async () => {
     try {
       setLoading(true);
-      const [dashboardData, replenishmentData, serviceData, abcXyzData] = await Promise.all([
+      const [dashboardData, replenishmentData, serviceData, abcXyzData, abcDetailData] = await Promise.all([
         analyticsService.getAnalyticsDashboard(),
         analyticsService.getReplenishmentSuggestions(),
         analyticsService.getServiceLevels(),
         analyticsService.getAbcXyzMatrix(),
+        analyticsService.getABCAnalysis(),
       ]);
       setAnalytics(dashboardData);
       setReplenishment(replenishmentData.results.slice(0, 8));
       setServiceLevels(serviceData);
       setAbcXyz(abcXyzData);
+      setAbcDetail(abcDetailData);
     } catch (error: any) {
       console.error('Error loading analytics:', error);
     } finally {
@@ -61,34 +80,42 @@ export default function AnalyticsPage() {
     );
   }
 
-  const abcData = [
-    {
-      name: 'Class A',
-      value: analytics.abc_analysis.class_a.value,
-      count: analytics.abc_analysis.class_a.count,
-      percentage: analytics.abc_analysis.class_a.percentage,
-    },
-    {
-      name: 'Class B',
-      value: analytics.abc_analysis.class_b.value,
-      count: analytics.abc_analysis.class_b.count,
-      percentage: analytics.abc_analysis.class_b.percentage,
-    },
-    {
-      name: 'Class C',
-      value: analytics.abc_analysis.class_c.value,
-      count: analytics.abc_analysis.class_c.count,
-      percentage: analytics.abc_analysis.class_c.percentage,
-    },
-  ];
+  const categoryAvailability = (() => {
+    if (!abcDetail) return [];
+    const byCategory: Record<
+      string,
+      {
+        totalStock: number;
+        productCount: number;
+      }
+    > = {};
 
+    for (const product of abcDetail.products) {
+      const key = product.category || 'Uncategorized';
+      if (!byCategory[key]) {
+        byCategory[key] = { totalStock: 0, productCount: 0 };
+      }
+      byCategory[key].totalStock += product.stock_quantity;
+      byCategory[key].productCount += 1;
+    }
+
+    return Object.entries(byCategory)
+      .map(([name, value]) => ({
+        name,
+        totalStock: value.totalStock,
+        productCount: value.productCount,
+      }))
+      .sort((a, b) => b.totalStock - a.totalStock);
+  })();
+
+  const totalCategoryStock = categoryAvailability.reduce((sum, d) => sum + (d.totalStock || 0), 0);
   const matrixBuckets = ['AX', 'AY', 'AZ', 'BX', 'BY', 'BZ', 'CX', 'CY', 'CZ'];
 
   return (
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Analytics Dashboard</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Analytics</h1>
           <p className="text-gray-600 dark:text-gray-300 mt-1">Comprehensive inventory insights and metrics</p>
         </div>
 
@@ -141,49 +168,141 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        {/* ABC Analysis Chart */}
+        {/* Inventory availability by category */}
         <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
-          <h2 className="text-xl font-bold mb-4">ABC Analysis</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <BarChart width={400} height={300} data={abcData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="value" fill="#3B82F6" />
-              </BarChart>
+          <h2 className="text-xl font-bold mb-4">Inventory Availability by Category</h2>
+          {categoryAvailability.length === 0 ? (
+            <div className="h-[260px] flex items-center justify-center text-gray-500 dark:text-gray-300">
+              No category availability data yet.
             </div>
-            <div>
-              <PieChart width={400} height={300}>
-                <Pie
-                  data={abcData}
-                  cx={200}
-                  cy={150}
-                  labelLine={false}
-                  label={({ name, percentage }) => `${name}: ${percentage.toFixed(1)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {abcData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
+          ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Futuristic line/area chart for category stock */}
+            <div className="h-[260px] md:h-[300px] rounded-xl p-4 bg-white text-slate-900 dark:text-white dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 border border-gray-100 dark:border-slate-800">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={categoryAvailability}>
+                  <defs>
+                    <linearGradient id="abcAreaPositive" x1="0" y1="1" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#16a34a" stopOpacity={0.05} />
+                      <stop offset="45%" stopColor="#22c55e" stopOpacity={0.25} />
+                      <stop offset="100%" stopColor="#4ade80" stopOpacity={0.6} />
+                    </linearGradient>
+                    <linearGradient id="abcLineStroke" x1="0" y1="1" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#16a34a" />
+                      <stop offset="50%" stopColor="#22c55e" />
+                      <stop offset="80%" stopColor="#f97316" />
+                      <stop offset="100%" stopColor="#dc2626" />
+                    </linearGradient>
+                    <filter id="abcGlow">
+                      <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+                      <feMerge>
+                        <feMergeNode in="coloredBlur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                  </defs>
+                  <CartesianGrid stroke="rgba(148,163,184,0.2)" strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="name"
+                    stroke="#64748b"
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: '#64748b' }}
+                  />
+                  <YAxis
+                    stroke="#64748b"
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: '#64748b' }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#f9fafb',
+                      border: '1px solid rgba(148,163,184,0.4)',
+                      borderRadius: '0.75rem',
+                      color: '#0f172a',
+                    }}
+                  />
+                  <Legend />
+                  {/* Soft green area under the curve (category stock) */}
+                  <Area
+                    type="monotone"
+                    dataKey="totalStock"
+                    stroke="transparent"
+                    fill="url(#abcAreaPositive)"
+                    dot={false}
+                    activeDot={false}
+                  />
+                  {/* 3D-feel line on top, with green/red gradient */}
+                  <Line
+                    type="monotone"
+                    dataKey="totalStock"
+                    stroke="url(#abcLineStroke)"
+                    strokeWidth={3}
+                    dot={{
+                      r: 4,
+                      strokeWidth: 2,
+                      stroke: '#020617',
+                      fill: '#22c55e',
+                    }}
+                    activeDot={{
+                      r: 6,
+                      strokeWidth: 2,
+                      stroke: '#0f172a',
+                      fill: '#22c55e',
+                    }}
+                    style={{ filter: 'url(#abcGlow)' }}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Pie chart: share of total stock by category */}
+            <div className="h-[260px] md:h-[300px]">
+              {totalCategoryStock > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={categoryAvailability}
+                      innerRadius={60}
+                      outerRadius={90}
+                      paddingAngle={4}
+                      dataKey="totalStock"
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+                    >
+                      {categoryAvailability.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#f9fafb',
+                        border: '1px solid rgba(148,163,184,0.4)',
+                        borderRadius: '0.75rem',
+                        color: '#0f172a',
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-gray-500">No ABC value data</div>
+              )}
             </div>
           </div>
+          )}
           <div className="mt-4 grid grid-cols-3 gap-4">
-            {abcData.map((item) => (
-              <div key={item.name} className="text-center p-4 bg-gray-50 rounded-lg">
+            {categoryAvailability.map((item, index) => (
+              <div
+                key={item.name}
+                className="text-center p-4 rounded-lg bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 border border-gray-100 dark:border-slate-700"
+              >
                 <p className="font-semibold text-lg">{item.name}</p>
-                <p className="text-2xl font-bold text-primary-600 mt-2">
-                  ${item.value.toLocaleString()}
+                <p
+                  className="text-2xl font-bold mt-2"
+                  style={{ color: COLORS[index % COLORS.length] }}
+                >
+                  {item.totalStock.toLocaleString()} units
                 </p>
                 <p className="text-sm text-gray-600 mt-1">
-                  {item.count} products ({item.percentage.toFixed(1)}%)
+                  {item.productCount} products
                 </p>
               </div>
             ))}
@@ -194,21 +313,21 @@ export default function AnalyticsPage() {
         <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
           <h2 className="text-xl font-bold mb-4">Inventory Turnover Details</h2>
           <div className="grid grid-cols-3 gap-4">
-            <div className="p-4 bg-blue-50 rounded-lg">
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
               <p className="text-sm text-gray-600">Turnover Ratio</p>
-              <p className="text-2xl font-bold text-blue-600 mt-2">
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-300 mt-2">
                 {analytics.inventory_turnover.ratio.toFixed(2)}x
               </p>
             </div>
-            <div className="p-4 bg-green-50 rounded-lg">
+            <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
               <p className="text-sm text-gray-600">COGS</p>
-              <p className="text-2xl font-bold text-green-600 mt-2">
+              <p className="text-2xl font-bold text-green-600 dark:text-green-300 mt-2">
                 ${analytics.inventory_turnover.cogs.toLocaleString()}
               </p>
             </div>
-            <div className="p-4 bg-purple-50 rounded-lg">
+            <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
               <p className="text-sm text-gray-600">Avg Inventory</p>
-              <p className="text-2xl font-bold text-purple-600 mt-2">
+              <p className="text-2xl font-bold text-purple-600 dark:text-purple-300 mt-2">
                 ${analytics.inventory_turnover.average_inventory.toLocaleString()}
               </p>
             </div>
@@ -360,4 +479,3 @@ export default function AnalyticsPage() {
     </Layout>
   );
 }
-

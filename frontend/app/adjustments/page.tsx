@@ -151,7 +151,7 @@ export default function AdjustmentsPage() {
                         <td className="p-3 font-medium">{adjustment.document_number}</td>
                         <td className="p-3">{adjustment.reason}</td>
                         <td className="p-3">
-                          <span className="px-2 py-1 text-xs rounded bg-gray-100 text-gray-800">
+                          <span className={`px-2 py-1 text-xs rounded bg-gray-100 text-gray-800 ${adjustment.adjustment_type === 'set' ? 'adjustment-type-set' : ''}`}>
                             {adjustment.adjustment_type}
                           </span>
                         </td>
@@ -211,4 +211,3 @@ export default function AdjustmentsPage() {
     </Layout>
   );
 }
-
