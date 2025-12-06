@@ -4,6 +4,18 @@ import { useEffect, useMemo, useState } from 'react';
 import Layout from '@/components/Layout';
 import { dashboardService, DashboardKPIs, RecentActivity, LowStockProduct } from '@/lib/dashboard';
 import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
+import {
   Package,
   AlertTriangle,
   Receipt,
@@ -208,6 +220,42 @@ export default function DashboardPage() {
     },
   ];
 
+  const flowChartData =
+    activities.length === 0
+      ? [
+          { label: 'Receipts', count: 0 },
+          { label: 'Deliveries', count: 0 },
+          { label: 'Transfers', count: 0 },
+        ]
+      : [
+          {
+            label: 'Receipts',
+            count: activities.filter((a) => a.type === 'receipt').length,
+          },
+          {
+            label: 'Deliveries',
+            count: activities.filter((a) => a.type === 'delivery').length,
+          },
+          {
+            label: 'Transfers',
+            count: activities.filter((a) => a.type === 'transfer').length,
+          },
+        ];
+
+  const stockHealthData = [
+    {
+      name: 'Healthy',
+      value:
+        (kpis?.total_products || 0) -
+        (kpis?.low_stock_items || 0) -
+        (kpis?.out_of_stock_items || 0),
+    },
+    { name: 'Low stock', value: kpis?.low_stock_items || 0 },
+    { name: 'Out of stock', value: kpis?.out_of_stock_items || 0 },
+  ];
+
+  const stockHealthColors = ['#22c55e', '#eab308', '#ef4444'];
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -224,7 +272,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Top: AI Copilot + Inventory Health / Risk Snapshot */}
+        {/* Top: StockInfo-AI + Inventory Health / Risk Snapshot */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           {/* StockInfo-AI */}
           <div className="xl:col-span-2 bg-white rounded-2xl shadow border border-slate-100/80 overflow-hidden">
@@ -368,6 +416,114 @@ export default function DashboardPage() {
                 View automation playbooks
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Live operations & stock overview */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Recent flow mix */}
+          <div className="bg-white rounded-2xl shadow border border-slate-100/80 p-6 lg:col-span-2">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-slate-900">
+                Recent flow mix (last activities)
+              </h2>
+              <p className="text-[11px] text-slate-500">
+                Live breakdown of receipts, deliveries and transfers.
+              </p>
+            </div>
+            <div className="h-52">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={flowChartData}>
+                  <defs>
+                    <linearGradient id="flowArea" x1="0" y1="1" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#0ea5e9" stopOpacity={0.05} />
+                      <stop offset="50%" stopColor="#22c55e" stopOpacity={0.25} />
+                      <stop offset="100%" stopColor="#6366f1" stopOpacity={0.6} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.25)" />
+                  <XAxis
+                    dataKey="label"
+                    stroke="#64748b"
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: '#64748b' }}
+                  />
+                  <YAxis
+                    allowDecimals={false}
+                    stroke="#64748b"
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: '#64748b' }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#f9fafb',
+                      border: '1px solid rgba(148,163,184,0.4)',
+                      borderRadius: '0.75rem',
+                      fontSize: 12,
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="count"
+                    name="Documents"
+                    stroke="#0ea5e9"
+                    strokeWidth={3}
+                    fill="url(#flowArea)"
+                    dot={{ r: 4, strokeWidth: 2, stroke: '#0f172a', fill: '#0ea5e9' }}
+                    activeDot={{ r: 6 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Stock health pie */}
+          <div className="bg-white rounded-2xl shadow border border-slate-100/80 p-6">
+            <h2 className="text-sm font-semibold text-slate-900 mb-2">Stock health snapshot</h2>
+            <div className="h-40">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={stockHealthData}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={35}
+                    outerRadius={55}
+                    paddingAngle={3}
+                  >
+                    {stockHealthData.map((entry, index) => (
+                      <Cell
+                        key={`cell-${entry.name}`}
+                        fill={stockHealthColors[index]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value: any, name: any) => [`${value}`, name]}
+                    contentStyle={{
+                      backgroundColor: '#f9fafb',
+                      border: '1px solid rgba(148,163,184,0.4)',
+                      borderRadius: '0.75rem',
+                      fontSize: 12,
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <ul className="mt-3 space-y-1 text-xs text-slate-600">
+              {stockHealthData.map((entry, index) => (
+                <li key={entry.name} className="flex items-center justify-between">
+                  <span className="inline-flex items-center gap-2">
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: stockHealthColors[index] }}
+                    />
+                    {entry.name}
+                  </span>
+                  <span className="font-semibold">{entry.value}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
 

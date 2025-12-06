@@ -22,6 +22,7 @@ import {
   GitMerge,
   Plug,
   ShieldCheck,
+  Boxes,
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
@@ -51,6 +52,7 @@ export default function Layout({ children }: LayoutProps) {
     { href: '/returns', label: 'Returns', icon: RotateCcw },
     { href: '/pick-waves', label: 'Pick Waves', icon: GitMerge },
     { href: '/suppliers', label: 'Suppliers', icon: Package },
+    { href: '/storage', label: 'Storage', icon: Boxes },
     { href: '/analytics', label: 'Analytics', icon: LayoutDashboard },
     { href: '/history', label: 'Move History', icon: History },
     { href: '/audit-log', label: 'Audit Log', icon: ShieldCheck },

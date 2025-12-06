@@ -64,6 +64,20 @@ export default function NewReceiptPage() {
     }
   };
 
+  const clampReceiptQuantity = (productId: number, rawValue: number): number => {
+    const product = products.find((p) => p.id === productId);
+    if (!product) return rawValue;
+    const base = Number(product.reorder_quantity || product.reorder_level || 0) || 10;
+    const maxAllowed = base * 5;
+    if (rawValue > maxAllowed) {
+      showToast.warning(
+        `For ${product.name}, the safe receipt limit is ${maxAllowed}. The quantity has been adjusted to this limit.`,
+      );
+      return maxAllowed;
+    }
+    return rawValue;
+  };
+
   const addItem = () => {
     setItems([
       ...items,
@@ -310,7 +324,16 @@ export default function NewReceiptPage() {
                           min="0"
                           step="0.01"
                           value={item.quantity_ordered}
-                          onChange={(e) => updateItem(index, 'quantity_ordered', parseFloat(e.target.value) || 0)}
+                          onChange={(e) =>
+                            updateItem(
+                              index,
+                              'quantity_ordered',
+                              clampReceiptQuantity(
+                                item.product,
+                                parseFloat(e.target.value) || 0,
+                              ),
+                            )
+                          }
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         />
                       </div>
@@ -325,7 +348,16 @@ export default function NewReceiptPage() {
                           step="0.01"
                           required
                           value={item.quantity_received}
-                          onChange={(e) => updateItem(index, 'quantity_received', parseFloat(e.target.value) || 0)}
+                          onChange={(e) =>
+                            updateItem(
+                              index,
+                              'quantity_received',
+                              clampReceiptQuantity(
+                                item.product,
+                                parseFloat(e.target.value) || 0,
+                              ),
+                            )
+                          }
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         />
                       </div>

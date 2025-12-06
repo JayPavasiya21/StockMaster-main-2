@@ -224,7 +224,7 @@ class Command(BaseCommand):
                 product=product,
                 warehouse=warehouse,
                 defaults={"quantity": qty, "reserved_quantity": reserved},
-            )
+        )
 
         # 6) Suppliers
         Supplier.objects.get_or_create(

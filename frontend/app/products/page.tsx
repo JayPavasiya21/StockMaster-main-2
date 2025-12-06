@@ -167,7 +167,7 @@ export default function ProductsPage() {
                           <div className="flex items-center justify-end gap-2">
                             <Link
                               href={`/products/${product.id}`}
-                              className="p-2 text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-200"
+                              className="p-2 text-gray-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-all duration-200 dark:text-gray-300 dark:hover:text-emerald-300 dark:hover:bg-emerald-500/20"
                             >
                               <Eye size={18} />
                             </Link>

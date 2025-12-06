@@ -65,6 +65,30 @@ export default function NewDeliveryPage() {
     }
   };
 
+  const clampDeliveryQuantity = (productId: number, rawValue: number): number => {
+    const product = products.find((p) => p.id === productId);
+    if (!product) return rawValue;
+    const totalStock = Number(product.total_stock || 0);
+    const safety = Number(product.reorder_level || 0);
+    // Do not allow issuing more than is on hand or below a safety buffer.
+    const maxIssue = Math.max(0, totalStock - safety);
+    if (maxIssue === 0) {
+      if (rawValue > 0) {
+        showToast.warning(
+          `There is no free stock available for ${product.name}. Quantity has been set to 0.`,
+        );
+      }
+      return 0;
+    }
+    if (rawValue > maxIssue) {
+      showToast.warning(
+        `For ${product.name}, you can ship at most ${maxIssue} units with the current stock. The quantity has been adjusted.`,
+      );
+      return maxIssue;
+    }
+    return rawValue;
+  };
+
   const addItem = () => {
     setItems([
       ...items,
@@ -320,7 +344,16 @@ export default function NewDeliveryPage() {
                           step="0.01"
                           required
                           value={item.quantity}
-                          onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value) || 0)}
+                          onChange={(e) =>
+                            updateItem(
+                              index,
+                              'quantity',
+                              clampDeliveryQuantity(
+                                item.product,
+                                parseFloat(e.target.value) || 0,
+                              ),
+                            )
+                          }
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         />
                       </div>

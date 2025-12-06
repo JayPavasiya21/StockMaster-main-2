@@ -27,8 +27,17 @@ import {
 } from 'recharts';
 import { TrendingUp, Package, DollarSign, AlertTriangle, Clock, Activity } from 'lucide-react';
 
-// Green for strong contribution, amber for medium, red for low – used across charts and tiles.
-const COLORS = ['#16a34a', '#f97316', '#dc2626'];
+// Distinct palette (no immediate repeats) for analytics visuals.
+const COLORS = [
+  '#16a34a', // emerald
+  '#f97316', // orange
+  '#dc2626', // red
+  '#0ea5e9', // sky
+  '#6366f1', // indigo
+  '#a855f7', // purple
+  '#ec4899', // pink
+  '#facc15', // amber
+];
 
 export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<AnalyticsDashboard | null>(null);

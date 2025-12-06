@@ -89,6 +89,55 @@ export default function NewAdjustmentPage() {
     setItems(newItems);
   };
 
+  const clampAdjustmentQuantity = (item: AdjustmentItem): number => {
+    const productMeta = products.find((p) => p.id === item.product);
+    if (!productMeta) return item.adjustment_quantity;
+
+    const current = Number(item.current_quantity || 0);
+    const requested = Number(item.adjustment_quantity || 0);
+    const base = Number(productMeta.reorder_quantity || productMeta.reorder_level || 0) || 10;
+    const maxCap = base * 5;
+    const minSafe = Number(productMeta.reorder_level || 0);
+
+    if (formData.adjustment_type === 'increase') {
+      if (current + requested > maxCap) {
+        const allowed = Math.max(0, maxCap - current);
+        showToast.warning(
+          `For ${productMeta.name}, warehouse capacity is limited. Increase amount has been adjusted to ${allowed}.`,
+        );
+        return allowed;
+      }
+      return requested;
+    }
+
+    if (formData.adjustment_type === 'decrease') {
+      const newQty = current - requested;
+      if (newQty < minSafe) {
+        const allowed = Math.max(0, current - minSafe);
+        showToast.warning(
+          `For ${productMeta.name}, you cannot reduce stock below the safety level of ${minSafe}. Decrease amount has been adjusted to ${allowed}.`,
+        );
+        return allowed;
+      }
+      return requested;
+    }
+
+    // set type: clamp final quantity between minSafe and maxCap
+    if (requested < minSafe) {
+      showToast.warning(
+        `For ${productMeta.name}, the new quantity cannot be lower than the safety level of ${minSafe}. It has been increased to that level.`,
+      );
+      return minSafe;
+    }
+    if (requested > maxCap) {
+      showToast.warning(
+        `For ${productMeta.name}, the new quantity exceeds the storage capacity. It has been limited to ${maxCap}.`,
+      );
+      return maxCap;
+    }
+    return requested;
+  };
+
   const handleScanResult = async (barcode: string) => {
     if (scannerItemIndex === null) return;
     try {
@@ -333,7 +382,15 @@ export default function NewAdjustmentPage() {
                           step="0.01"
                           required
                           value={item.adjustment_quantity}
-                          onChange={(e) => updateItem(index, 'adjustment_quantity', parseFloat(e.target.value) || 0)}
+                          onChange={(e) =>
+                            updateItem(index, 'adjustment_quantity', {
+                              ...item,
+                              adjustment_quantity: clampAdjustmentQuantity({
+                                ...item,
+                                adjustment_quantity: parseFloat(e.target.value) || 0,
+                              }),
+                            } as any)
+                          }
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         />
                       </div>
